@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Видео просмотр + история — простой плеер</title>
+    <style>
+        :root {
+            --bg: #0f1724;
+            --card: #071022;
+            --accent: #06b6d4;
+            --muted: #9fcfd6;
+            --glass: rgba(255, 255, 255, 0.03);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+            background: linear-gradient(180deg, #041021 0%, #082033 100%);
+            color: #e6f7fb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            padding-top: 70px
+        }
+
+        .wrap {
+            width: 100%;
+            max-width: 1100px;
+            /* компактнее */
+            margin: auto;
+            border-radius: 16px;
+            padding: 20px;
+            background: rgba(10, 15, 25, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 30px rgba(2, 6, 23, 0.6);
+            display: grid;
+            gap: 14px;
+            grid-template-columns: 1fr 320px;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        h1 {
+            font-size: 18px;
+            margin: 0;
+        }
+
+        .small {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        input[type="url"] {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            background: var(--glass);
+            color: inherit;
+            outline: none;
+        }
+
+        button {
+            background: linear-gradient(90deg, var(--accent), #7c3aed);
+            color: #042027;
+            border: none;
+            padding: 9px 12px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(6, 182, 212, 0.10);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        button:hover {
+            transform: scale(1.07);
+            box-shadow: 0 10px 24px rgba(6, 182, 212, 0.25);
+        }
+
+        button:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+        }
+
+        .main {
+            display: grid;
+            gap: 12px;
+            grid-template-rows: auto 1fr;
+        }
+
+        .player {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.00));
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            min-height: 260px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .placeholder {
+            color: var(--muted);
+            text-align: center;
+        }
+
+        iframe.video {
+            width: 100%;
+            height: 420px;
+            border-radius: 8px;
+            border: 0;
+            max-height: 70vh;
+        }
+
+        aside {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .panel {
+            padding: 10px;
+            border-radius: 10px;
+            background: var(--card);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 60vh;
+            overflow: auto;
+            padding-right: 6px;
+        }
+
+        .history-item {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            border-radius: 8px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent);
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.015);
+        }
+
+        .meta {
+            font-size: 13px;
+            color: var(--muted);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .title {
+            font-weight: 700;
+            font-size: 14px;
+            color: #e6f7fb;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 160px;
+        }
+
+        .tiny-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--muted);
+            padding: 6px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .tiny-btn:hover {
+            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .tiny-btn:active {
+            transform: scale(0.9);
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .search {
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            background: var(--glass);
+            color: inherit;
+        }
+
+        .topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 20px;
+            background: rgba(10, 15, 25, 0.95);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .topbar input[type="url"] {
+            flex: 1;
+            max-width: 600px;
+        }
+
+        footer {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        @media(max-width:980px) {
+            .wrap {
+                grid-template-columns: 1fr;
+            }
+
+            iframe.video {
+                height: 320px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap" role="application" aria-label="Video viewer with history">
+        <header>
+            <div>
+                <h1>Video Viewer</h1>
+                <div class="small">Вставь ссылку — смотри. История сохраняется локально.</div>
+            </div>
+
+            <div class="controls" style="width:45%">
+                <input id="urlInput" type="url" placeholder="Вставь ссылку на YouTube / Instagram / Vimeo и т.п." />
+                <button id="loadBtn">Смотреть</button>
+            </div>
+        </header>
+
+        <div class="main">
+            <div>
+                <div class="player panel" id="player">
+                    <div class="placeholder" id="placeholder">
+                        Вставь ссылку и нажми «Смотреть» — поддерживается прямая вставка YouTube (встраиваемый плеер),
+                        другие ссылки откроются в iframe если это возможно.
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+                    <button id="openOriginal" class="tiny-btn">Открыть оригинал</button>
+                    <button id="copyLink" class="tiny-btn">Копировать ссылку</button>
+                    <button id="openExternal" class="tiny-btn">Открыть в стороннем сервисе</button>
+                    <div style="flex:1"></div>
+                    <input id="filterInput" class="search" placeholder="Поиск по истории" />
+                </div>
+            </div>
+
+            <aside>
+                <div class="panel">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <div style="font-weight:800">История поиска</div>
+                        <div style="display:flex;gap:8px">
+                            <button id="clearAll" class="tiny-btn" title="Очистить историю">Очистить</button>
+                        </div>
+                    </div>
+
+                    <div class="history-list" id="historyList" aria-live="polite"></div>
+                </div>
+
+                <div class="panel small">
+                    <div style="font-weight:700;margin-bottom:6px">Как это работает</div>
+                    <ul style="margin:0;padding-left:18px;color:var(--muted)">
+                        <li>Сохраняется только URL и время (локально в браузере).</li>
+                        <li>Поддержка встроенного YouTube-плеера: вставь ссылку на YouTube — ролик встроится.</li>
+                        <li>Для прочих источников попытка загрузить <code>iframe</code> — иногда сайты не позволяют
+                            (CORS/embedding).</li>
+                        <li>Скачивание не выполняется (требует серверной части и возможно нарушает правила). Можно
+                            открыть ссылку в стороннем сервисе вручную.</li>
+                    </ul>
+                </div>
+            </aside>
+        </div>
+
+        <footer>Сохранение истории — локально в браузере. Модифицируй код по нуждам.</footer>
+    </div>
+
+    <script>
+
+        const urlInput = document.getElementById('urlInput');
+        const loadBtn = document.getElementById('loadBtn');
+        const player = document.getElementById('player');
+        const placeholder = document.getElementById('placeholder');
+        const historyList = document.getElementById('historyList');
+        const filterInput = document.getElementById('filterInput');
+        const clearAllBtn = document.getElementById('clearAll');
+        const openOriginalBtn = document.getElementById('openOriginal');
+        const copyLinkBtn = document.getElementById('copyLink');
+        const openExternalBtn = document.getElementById('openExternal');
+
+        const STORAGE_KEY = 'video_viewer_history_v1';
+
+        function nowIso() { return new Date().toISOString(); }
+        function humanTime(iso) {
+            const d = new Date(iso);
+            return d.toLocaleString();
+        }
+
+        function extractYouTubeId(url) {
+            try {
+                const u = new URL(url);
+                if (u.hostname.includes('youtu.be')) {
+                    return u.pathname.slice(1);
+                }
+                if (u.searchParams && u.searchParams.get('v')) {
+                    return u.searchParams.get('v');
+                }
+                const parts = u.pathname.split('/');
+                const idx = parts.indexOf('embed');
+                if (idx !== -1 && parts[idx + 1]) return parts[idx + 1];
+                const candidate = parts.pop() || '';
+                if (candidate.length >= 6) return candidate;
+            } catch (e) { }
+            return null;
+        }
+
+        function loadHistory() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return [];
+                return JSON.parse(raw);
+            } catch (e) {
+                return [];
+            }
+        }
+        function saveHistory(arr) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(arr.slice(0, 200)));
+        }
+
+        function renderHistory(filter = '') {
+            const arr = loadHistory();
+            const f = filter.trim().toLowerCase();
+            historyList.innerHTML = '';
+            const shown = arr.filter(it => {
+                if (!f) return true;
+                return (it.title && it.title.toLowerCase().includes(f)) || it.url.toLowerCase().includes(f);
+            });
+
+            if (shown.length === 0) {
+                historyList.innerHTML = '<div style="color:var(--muted);font-size:13px">История пуста</div>';
+                return;
+            }
+
+            shown.forEach((it, index) => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.title = it.url;
+
+                const left = document.createElement('div');
+                left.style.display = 'flex';
+                left.style.flexDirection = 'column';
+                left.style.gap = '4px';
+
+                const t = document.createElement('div');
+                t.className = 'title';
+                t.textContent = it.title ? it.title : (it.url.length > 40 ? it.url.slice(0, 40) + '…' : it.url);
+
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+                meta.innerHTML = `<span>${humanTime(it.time)}</span><span style="opacity:.6">·</span><span style="font-size:12px;color:var(--muted)">${it.url}</span>`;
+
+                left.appendChild(t);
+                left.appendChild(meta);
+
+                const right = document.createElement('div');
+                right.className = 'row';
+
+                const openBtn = document.createElement('button');
+                openBtn.className = 'tiny-btn';
+                openBtn.textContent = 'Открыть';
+                openBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    openUrlInPlayer(it.url, true);
+                });
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'tiny-btn';
+                delBtn.textContent = 'Удалить';
+                delBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    removeHistoryItem(it.time);
+                });
+
+                right.appendChild(openBtn);
+                right.appendChild(delBtn);
+
+                item.appendChild(left);
+                item.appendChild(right);
+
+                item.addEventListener('click', () => openUrlInPlayer(it.url, true));
+
+                historyList.appendChild(item);
+            });
+        }
+
+        function addHistory(url, title = '') {
+            if (!url) return;
+            const arr = loadHistory();
+            const filtered = arr.filter(it => it.url !== url);
+            const entry = { url, title, time: nowIso() };
+            filtered.unshift(entry);
+            saveHistory(filtered);
+            renderHistory(filterInput.value);
+        }
+
+        function removeHistoryItem(timeIso) {
+            const arr = loadHistory().filter(it => it.time !== timeIso);
+            saveHistory(arr);
+            renderHistory(filterInput.value);
+        }
+
+        clearAllBtn.addEventListener('click', () => {
+            if (!confirm('Очистить всю историю?')) return;
+            localStorage.removeItem(STORAGE_KEY);
+            renderHistory('');
+        });
+
+        copyLinkBtn.addEventListener('click', () => {
+            const url = (currentLoadedUrl || '').trim();
+            if (!url) { alert('Нет загруженного видео.'); return; }
+            navigator.clipboard?.writeText(url).then(() => {
+                alert('Ссылка скопирована в буфер обмена.');
+            }).catch(() => alert('Не удалось скопировать.'));
+        });
+
+        openOriginalBtn.addEventListener('click', () => {
+            const url = (currentLoadedUrl || '').trim();
+            if (!url) { alert('Нет загруженного видео.'); return; }
+            window.open(url, '_blank', 'noopener');
+        });
+
+        openExternalBtn.addEventListener('click', () => {
+            const url = (currentLoadedUrl || '').trim();
+            if (!url) { alert('Нет загруженного видео.'); return; }
+            const services = [
+                { name: 'yewtu (Интерфейс Invidious)', url: 'https://yewtu.cafe/watch?v=' },
+                { name: 'y2mate (веб-сервисы для скачивания)', url: 'https://www.y2mate.com/search?q=' },
+                { name: 'savefrom (поиск по url)', url: 'https://en.savefrom.net/1-how-to-download-youtube-video.php#url=' }
+            ];
+            const choice = prompt('Откроется страница стороннего сервиса. Вставьте "1" для yewtu, "2" для y2mate, "3" для savefrom. Отмена — отмена.');
+            if (!choice) return;
+            const c = Number(choice);
+            if (c >= 1 && c <= services.length) {
+                const s = services[c - 1];
+                const id = extractYouTubeId(url);
+                const openUrl = id ? (s.url + encodeURIComponent(id)) : (s.url + encodeURIComponent(url));
+                window.open(openUrl, '_blank', 'noopener');
+            } else {
+                alert('Неправильный выбор.');
+            }
+        });
+
+        let currentLoadedUrl = '';
+
+        loadBtn.addEventListener('click', () => {
+            const url = urlInput.value.trim();
+            if (!url) { alert('Вставь ссылку в поле.'); return; }
+            openUrlInPlayer(url, true);
+        });
+
+        filterInput.addEventListener('input', () => renderHistory(filterInput.value));
+
+        function openUrlInPlayer(url, save = false) {
+            currentLoadedUrl = url;
+            const yt = extractYouTubeId(url);
+            player.innerHTML = '';
+            if (yt) {
+                const embed = document.createElement('iframe');
+                embed.className = 'video';
+                embed.src = `https://www.youtube.com/embed/${encodeURIComponent(yt)}?rel=0&modestbranding=1`;
+                embed.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                embed.allowFullscreen = true;
+                player.appendChild(embed);
+
+                addHistory(url, 'YouTube — ' + yt);
+                urlInput.value = url;
+                return;
+            }
+
+            try {
+                const iframe = document.createElement('iframe');
+                iframe.className = 'video';
+                iframe.src = url;
+                iframe.allowFullscreen = true;
+                iframe.onload = () => {
+                    // nothing
+                };
+                player.appendChild(iframe);
+                addHistory(url, url);
+                urlInput.value = url;
+                return;
+            } catch (e) {
+                player.innerHTML = `<div class="placeholder">Не удалось встроить ссылку. Открой оригинал в новой вкладке.</div>`;
+                addHistory(url, url);
+                urlInput.value = url;
+                return;
+            }
+        }
+
+        renderHistory();
+
+        (function loadLast() {
+            const arr = loadHistory();
+            if (arr && arr.length > 0) {
+                // openUrlInPlayer(arr[0].url, false);
+            }
+        })();
+
+    </script>
+</body>
+
+</html>
