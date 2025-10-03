@@ -315,7 +315,7 @@
             </aside>
         </div>
 
-        <footer>Сохранение истории — локально в браузере. Модифицируй код по нуждам.</footer>
+        <footer>Developed to Joxa</footer>
     </div>
 
     <script>
@@ -546,6 +546,13 @@
             const arr = loadHistory();
             if (arr && arr.length > 0) {
                 // openUrlInPlayer(arr[0].url, false);
+                (function loadLast() {
+                    const arr = loadHistory();
+                    if (arr && arr.length > 0) {
+                        openUrlInPlayer(arr[0].url, false);
+                    }
+                })();
+
             }
         })();
 
